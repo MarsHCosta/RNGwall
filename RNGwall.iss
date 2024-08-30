@@ -1,5 +1,5 @@
 #define MyAppName "RNGwall"
-#define MyAppVersion "1.0"
+#define MyAppVersion "v1.1.0"
 
 ; Uncomment the appropriate line based on your Python/application architecture
 #define MyAppArchitecture "x64"
@@ -18,7 +18,7 @@ OutputDir=installer_output
 OutputBaseFilename={#MyAppName}_setup_{#MyAppVersion}_{#MyAppArchitecture}
 SetupIconFile=icons\RNGwall.ico
 
-; Uncomment the appropriate lines based on your Python/application architecture
+;Uncomment the appropriate lines based on your Python/application architecture
 ;ArchitecturesAllowed=x64
 ;ArchitecturesInstallIn64BitMode=x64
 
