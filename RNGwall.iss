@@ -1,21 +1,35 @@
+#define MyAppName "RNGwall"
+#define MyAppVersion "1.0"
+
+; Uncomment the appropriate line based on your Python/application architecture
+#define MyAppArchitecture "x64"
+;#define MyAppArchitecture "x86"
+
 [Setup]
-AppName=RNGwall
-AppVersion=1.0
+AppName={#MyAppName}
+AppVersion={#MyAppVersion}
 WizardStyle=modern
-DefaultDirName={autopf}\RNGwall
-DefaultGroupName=RNGwall
-UninstallDisplayIcon={app}\RNGwall.exe
+DefaultDirName={autopf}\{#MyAppName}
+DefaultGroupName={#MyAppName}
+UninstallDisplayIcon={app}\{#MyAppName}.exe
 Compression=lzma2
 SolidCompression=yes
-OutputDir=userdocs:Inno Setup Examples Output
+OutputDir=installer_output
+OutputBaseFilename={#MyAppName}_setup_{#MyAppVersion}_{#MyAppArchitecture}
+SetupIconFile=icons\RNGwall.ico
+
+; Uncomment the appropriate lines based on your Python/application architecture
+;ArchitecturesAllowed=x64
+;ArchitecturesInstallIn64BitMode=x64
 
 [Files]
-Source: "dist\RNGwall.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "dist\{#MyAppName}.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "dist\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "icons\RNGwall.ico"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
-Name: "{group}\RNGwall"; Filename: "{app}\RNGwall.exe"
-Name: "{commondesktop}\RNGwall"; Filename: "{app}\RNGwall.exe"; Tasks: desktopicon
+Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppName}.exe"; IconFilename: "{app}\RNGwall.ico"
+Name: "{commondesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppName}.exe"; IconFilename: "{app}\RNGwall.ico"; Tasks: desktopicon
 
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked

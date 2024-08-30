@@ -1,15 +1,27 @@
-import os
 import tkinter as tk
 from tkinter import messagebox, ttk
 from threading import Thread
 from downloader import download_and_set_wallpaper
 import json
+import os
 
 class WallpaperChangerGUI:
     def __init__(self, root):
         self.root = root
         self.root.title("RNGwall")
         self.root.configure(bg="#1e1e1e")  # Dark background
+
+        # Set the window icon
+        icon_path = os.path.join(os.path.dirname(__file__), 'icons', 'RNGwall.ico')
+        self.root.iconbitmap(icon_path)
+
+        # Set the taskbar icon (Windows specific)
+        try:
+            from ctypes import windll
+            myappid = 'mycompany.myproduct.subproduct.version'  # arbitrary string
+            windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
+        except ImportError:
+            pass
 
         self.current_wallpaper = None
         self.previous_wallpaper = None
@@ -23,8 +35,9 @@ class WallpaperChangerGUI:
         self.apply_styles()
 
     def load_config(self):
+        config_path = os.path.join(os.path.dirname(__file__), 'config.json')
         try:
-            with open('config.json', 'r') as f:
+            with open(config_path, 'r') as f:
                 self.config = json.load(f)
         except FileNotFoundError:
             self.config = {
@@ -32,9 +45,11 @@ class WallpaperChangerGUI:
                 'default_keywords': 'nature,landscape',
                 'default_interval': '30'
             }
+            self.save_config()
 
     def save_config(self):
-        with open('config.json', 'w') as f:
+        config_path = os.path.join(os.path.dirname(__file__), 'config.json')
+        with open(config_path, 'w') as f:
             json.dump(self.config, f)
 
     def create_widgets(self):

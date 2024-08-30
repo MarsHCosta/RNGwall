@@ -7,12 +7,10 @@ spec_root = os.path.abspath(os.getcwd())
 
 block_cipher = None
 
-a = Analysis([os.path.join(spec_root, 'main.py')],
+a = Analysis(['main.py'],
              pathex=[spec_root],
              binaries=[],
-             datas=[
-                 (os.path.join(spec_root, 'icons', '*'), 'icons'),
-             ],
+             datas=[('icons', 'icons')],  # Include the entire icons folder
              hiddenimports=[],
              hookspath=[],
              hooksconfig={},
@@ -29,7 +27,7 @@ exe = EXE(pyz,
           a.scripts,
           a.binaries,
           a.zipfiles,
-          a.datas,
+          a.datas,  
           [],
           name='RNGwall',
           debug=False,
@@ -43,4 +41,4 @@ exe = EXE(pyz,
           target_arch=None,
           codesign_identity=None,
           entitlements_file=None,
-          icon='icons\\RNGWall.ico' )
+          icon='icons\\RNGwall.ico' )
