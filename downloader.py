@@ -1,135 +1,73 @@
 import os
 import time
 import ctypes
-import logging
-from threading import Thread
 from random import choice
 from urllib.parse import urlparse
-from os.path import basename, isfile, join, isdir
+from os.path import basename, isfile
 import requests
-from requests.exceptions import RequestException
 from dotenv import load_dotenv
-from tkinter import messagebox
-from PIL import Image
+import storage_manager
 
-# Load environment variables
 load_dotenv()
 
-# Setup logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-logger = logging.getLogger(__name__)
+class WallpaperChanger:
+    def __init__(self):
+        self.is_running = False
 
-WALLPAPERS_DIRECTORY = os.path.join(os.getenv('USERPROFILE'), "Pictures", "Wallhaver")
-API_KEY = os.getenv('API_KEY')
-BASE_URL = "https://wallhaven.cc/api/v1/"
-MAX_RETRIES = 3
-RETRY_DELAY = 5  # seconds
+    def download_and_set_wallpaper(self, resolution, keywords, interval):
+        storage_manager.ensure_wallpapers_directory()
+        self.is_running = True
 
+        base_url = "https://wallhaven.cc/api/v1/"
+        api_key = os.getenv('WALLHAVEN_API_KEY')
 
-def ensure_wallpapers_directory():
-    if not isdir(WALLPAPERS_DIRECTORY):
-        os.makedirs(WALLPAPERS_DIRECTORY)
-        logger.info(f"Created wallpapers directory: {WALLPAPERS_DIRECTORY}")
+        search_params = {
+            "q": keywords,
+            "sorting": "random",
+            "ratio": "16x9",
+            "atleast": resolution,
+            "purity": "100",
+        }
 
+        headers = {"X-API-KEY": api_key} if api_key else {}
 
-def get_wallpaper_data(resolution, keywords):
-    search_params = {
-        "q": keywords,
-        "sorting": "random",
-        "ratio": "16x9",
-        "atleast": resolution,
-        "purity": "100",  # SFW content
-    }
+        while self.is_running:
+            try:
+                response = requests.get(base_url + "search/", headers=headers, params=search_params, timeout=10)
+                response.raise_for_status()
+                data = response.json()
 
-    headers = {"X-API-KEY": API_KEY} if API_KEY else {}
+                if not data["data"]:
+                    return
 
-    for attempt in range(MAX_RETRIES):
-        try:
-            response = requests.get(BASE_URL + "search/", headers=headers, params=search_params)
-            response.raise_for_status()
-            data = response.json()
+                wp = choice(data["data"])
+                wp_url = wp["path"]
+                timestamp = time.strftime("%Y%m%d%H%M%S")
+                filename = f"{timestamp}_{basename(urlparse(wp_url).path).removeprefix('wallhaven-')}"
+                wp_file = storage_manager.get_wallpaper_path(filename)
 
-            if not data["data"]:
-                logger.warning("No wallpapers found with the given criteria.")
-                return None
+                if not isfile(wp_file):
+                    with requests.get(wp_url, stream=True, timeout=10) as r:
+                        r.raise_for_status()
+                        with open(wp_file, "wb") as f:
+                            for chunk in r.iter_content(8192):
+                                f.write(chunk)
 
-            return choice(data["data"])
-        except RequestException as e:
-            logger.error(f"Error fetching wallpaper data (attempt {attempt + 1}/{MAX_RETRIES}): {e}")
-            if attempt < MAX_RETRIES - 1:
-                time.sleep(RETRY_DELAY)
-            else:
-                messagebox.showerror("Error", "Failed to fetch wallpaper data. Please try again later.")
-                return None
+                ctypes.windll.user32.SystemParametersInfoW(20, 0, wp_file, 0)
 
+                storage_manager.clean_old_wallpapers()
 
-def download_wallpaper(wp_url, wp_file):
-    try:
-        with requests.get(wp_url, stream=True) as r:
-            r.raise_for_status()
-            with open(wp_file, "wb") as f:
-                for chunk in r.iter_content(8192):
-                    f.write(chunk)
-        logger.info(f"Downloaded wallpaper: {wp_file}")
-        return True
-    except RequestException as e:
-        logger.error(f"Error downloading wallpaper: {e}")
-        return False
+                for _ in range(interval * 60):
+                    if not self.is_running:
+                        break
+                    time.sleep(1)
 
+            except requests.RequestException:
+                time.sleep(60)
+            except Exception:
+                time.sleep(60)
 
-def is_valid_image(file_path):
-    try:
-        with Image.open(file_path) as img:
-            img.verify()
-        return True
-    except:
-        logger.error(f"Invalid image file: {file_path}")
-        return False
+    def stop(self):
+        self.is_running = False
 
-
-def set_wallpaper(wp_file):
-    ctypes.windll.user32.SystemParametersInfoW(20, 0, wp_file, 0)
-    logger.info(f"Wallpaper set to {wp_file}")
-
-
-def cleanup_old_wallpapers(max_files=100):
-    wallpapers = [f for f in os.listdir(WALLPAPERS_DIRECTORY) if f.endswith(('.png', '.jpg', '.jpeg'))]
-    wallpapers.sort(key=lambda x: os.path.getmtime(join(WALLPAPERS_DIRECTORY, x)), reverse=True)
-
-    for old_wp in wallpapers[max_files:]:
-        os.remove(join(WALLPAPERS_DIRECTORY, old_wp))
-        logger.info(f"Removed old wallpaper: {old_wp}")
-
-
-def download_and_set_wallpaper(resolution, keywords, interval):
-    ensure_wallpapers_directory()
-
-    while True:
-        wp_data = get_wallpaper_data(resolution, keywords)
-        if not wp_data:
-            time.sleep(interval * 60)
-            continue
-
-        wp_url = wp_data["path"]
-        timestamp = time.strftime("%Y%m%d%H%M%S")
-        wp_file = join(WALLPAPERS_DIRECTORY,
-                       f"{timestamp}_{basename(urlparse(wp_url).path).removeprefix('wallhaven-')}")
-
-        if download_wallpaper(wp_url, wp_file) and is_valid_image(wp_file):
-            set_wallpaper(wp_file)
-            cleanup_old_wallpapers()
-        else:
-            if isfile(wp_file):
-                os.remove(wp_file)
-
-        time.sleep(interval * 60)
-
-
-# Usage
-if __name__ == "__main__":
-    resolution = "1920x1080"
-    keywords = "nature,landscape"
-    interval = 30  # minutes
-
-    download_thread = Thread(target=download_and_set_wallpaper, args=(resolution, keywords, interval))
-    download_thread.start()
+wallpaper_changer = WallpaperChanger()
